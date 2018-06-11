@@ -40,5 +40,5 @@ class PinX():
     def pull(self, p):
         io.pullup(self.id, p)
 
-    def irq(handler=None, trigger=PinX.IRQ_RISING)
-    
+    def irq(handler=None, trigger=PinX.IRQ_RISING):
+        pass

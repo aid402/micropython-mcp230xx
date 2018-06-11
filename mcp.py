@@ -35,10 +35,6 @@ PUD_DOWN= 1
 PUD_UP  = 2
 
 class MCP():
-    """Base class to represent an MCP230xx series GPIO extender.  Is compatible
-    with the Adafruit_GPIO BaseGPIO class so it can be used as a custom GPIO
-    class for interacting with device.
-    """
 
     def __init__(self, address=0x20, gpioScl=5, gpioSda=4, pinReset=0):
         """Initialize MCP230xx at specified I2C address and bus number.  If bus
@@ -46,7 +42,7 @@ class MCP():
         """
         self.address = address
         self.pinReset = Pin(pinReset, Pin.OUT, Pin.PULL_UP, value = 1)
-        self.i2c = I2C(scl=Pin(gpioScl),sda=Pin(gpioSda))
+        self.i2c = I2C(scl=Pin(gpioScl),sda=Pin(gpioSda),)
         # Assume starting in ICON.BANK = 0 mode (sequential access).
         # Compute how many bytes are needed to store count of GPIO.
         self.gpio_bytes = self.NUM_GPIO//8
@@ -75,16 +71,9 @@ class MCP():
         return self.i2c.readfrom_mem(self.address, register, length)
 
     def write_bit(self, bit, value, reg, addr):
-        """Set the specified pin the provided high/low value.  Value should be
-        either HIGH/LOW or a boolean (True = HIGH).
-        """
         self.write_bits({bit: value}, reg, addr)
 
     def write_bits(self, bits, reg, addr):
-        """Set multiple pins high or low at once.  Pins should be a dict of pin
-        name to pin value (HIGH/True for 1, LOW/False for 0).  All provided pins
-        will be set to the given values.
-        """
         [self._validate_pin(bit) for bit in bits.keys()]
 
         for bit, value in iter(bits.items()):
@@ -95,15 +84,9 @@ class MCP():
         self.writeList(addr, reg)
 
     def read_bit(self, bit, reg, addr, read=True):
-        """Read the specified pin and return HIGH/True if the pin is pulled
-        high, or LOW/False if pulled low.
-        """
         return self.read_bits([bit], reg, addr, read)[0]
 
     def read_bits(self, bits, reg, addr, read=True):
-        """Read multiple pins specified in the given list and return list of pin values
-        HIGH/True if the pin is pulled high, or LOW/False if pulled low.
-        """
         [self._validate_pin(bit) for bit in bits]
 
         if read:
