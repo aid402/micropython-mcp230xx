@@ -1,3 +1,4 @@
+'''mcp --> machine.Pin format'''
 import mcp
 io = mcp.MCP23017()
 class PinX():
