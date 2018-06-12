@@ -1,55 +1,29 @@
-# Copyright (c) 2014 Adafruit Industries
-# Author: Tony DiCola, ported for Micropython ESP8266 by Cefn Hoile
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
+# Credit https://github.com/ShrimpingIt/micropython-mcp230xx
+#        https://github.com/adafruit/Adafruit_Python_GPIO/blob/master/Adafruit_GPIO/MCP230xx.py
+# Author: Suttipong Wongkheaw, Thailand
+
 from machine import Pin, I2C
 from time import sleep
 
 OUT     = 0
 IN      = 1
-HIGH    = True
-LOW     = False
 
-RISING  = 1
-FALLING = 2
-BOTH    = 3
-
-PUD_OFF = 0
-PUD_DOWN= 1
-PUD_UP  = 2
+RISING  = 0
+FALLING = 1
+CHANGE  = 2
 
 class MCP():
 
     def __init__(self, address=0x20, gpioScl=5, gpioSda=4, pinReset=0):
-        """Initialize MCP230xx at specified I2C address and bus number.  If bus
-        is not specified it will default to the appropriate platform detected bus.
-        """
         self.address = address
         self.pinReset = Pin(pinReset, Pin.OUT, Pin.PULL_UP, value = 1)
         self.i2c = I2C(scl=Pin(gpioScl),sda=Pin(gpioSda),)
-        # Assume starting in ICON.BANK = 0 mode (sequential access).
-        # Compute how many bytes are needed to store count of GPIO.
+
         self.gpio_bytes = self.NUM_GPIO//8
-        # Buffer register values so they can be changed without reading.
-        self.iodir = bytearray(self.gpio_bytes)  # Default direction to all inputs.
-        self.gppu = bytearray(self.gpio_bytes)  # Default to pullups disabled.
-        self.gpio = bytearray(self.gpio_bytes)  # Write current direction and pullup buffer state.
+
+        self.iodir = bytearray(self.gpio_bytes)
+        self.gppu = bytearray(self.gpio_bytes)
+        self.gpio = bytearray(self.gpio_bytes)
         self.ipol = bytearray(self.gpio_bytes)
         self.gpinten = bytearray(self.gpio_bytes)
         self.defval = bytearray(self.gpio_bytes)
@@ -60,20 +34,19 @@ class MCP():
         self.olat = bytearray(self.gpio_bytes)
 
     def _validate_pin(self, pin):
-        # Raise an exception if pin is outside the range of allowed values.
         if pin < 0 or pin >= self.NUM_GPIO:
             raise ValueError('Invalid GPIO value, must be between 0 and {0}.'.format(self.NUM_GPIO))
 
-    def writeList(self, register, data):
+    def writeRegister(self, register, data):
         return self.i2c.writeto_mem(self.address, register, data)
 
-    def readList(self, register, length):
+    def readRegister(self, register, length):
         return self.i2c.readfrom_mem(self.address, register, length)
 
-    def write_bit(self, bit, value, reg, addr):
-        self.write_bits({bit: value}, reg, addr)
+    def set_bit(self, bit, value, reg, addr):
+        self.set_bits({bit: value}, reg, addr)
 
-    def write_bits(self, bits, reg, addr):
+    def set_bits(self, bits, reg, addr):
         [self._validate_pin(bit) for bit in bits.keys()]
 
         for bit, value in iter(bits.items()):
@@ -81,49 +54,74 @@ class MCP():
                 reg[int(pin/8)] |= 1 << (int(pin%8))
             else:
                 reg[int(pin/8)] &= ~(1 << (int(pin%8)))
-        self.writeList(addr, reg)
+        self.writeRegister(addr, reg)
 
-    def read_bit(self, bit, reg, addr, read=True):
-        return self.read_bits([bit], reg, addr, read)[0]
+    def get_bit(self, bit, reg, addr, read=True):
+        return self.get_bits([bit], reg, addr, read)[0]
 
-    def read_bits(self, bits, reg, addr, read=True):
+    def get_bits(self, bits, reg, addr, read=True):
         [self._validate_pin(bit) for bit in bits]
 
         if read:
-            reg = self.readList(addr, self.gpio_bytes)
+            reg = self.readRegister(addr, self.gpio_bytes)
         return [(reg[int(bit/8)] & 1 << (int(bit%8))) > 0 for bit in bits]
 
     def _init(self, pin):
         self._validate_pin(pin)
 
-    def reset():
+    def reset(): # Reset mcp
         self.pinReset.value(0)
         sleep(0.5)
         self.pinReset.value(1)
 
-    def iomode(self, pin, _mode):
+        self.iodir[] = 1
+        self.gppu[] = 0
+        self.gpio[] = 0
+        self.ipol[] = 0
+        self.gpinten[] = 0
+        self.defval[] = 0
+        self.intcon[] = 0
+        self.iocon[] = 0
+        self.intf[] = 0
+        self.intcap[] = 0
+        self.olat[] = 0
+
+    def iomode(self, pin, _mode): # Set GPIO direction IN/OUT
         if _mode is not None:
-            if _mode == IN or _mode == OUT:
-                write_bit(pin, _mode, self.iodir, self.IODIR)
+            if _mode in [IN, OUT]:
+                self.set_bit(pin, _mode, self.iodir, self.IODIR)
             else:
                 raise ValueError('Unexpected value.  Must be IN or OUT.')
+            return None
         else:
-            return read_bit(pin, self.iodir, self.IODIR)
+            return self.get_bit(pin, self.iodir, self.IODIR)
 
-    def pullup(self, pin, enabled):
-        write_bit(pin, enabled, self.gppu, self.GPPU)
+    def pullup(self, pin, enabled): # Set GPIO pull_up resistor
+        self.set_bit(pin, enabled, self.gppu, self.GPPU)
 
-    def write(self, pin, value):
-        write_bit(pin, value, self.gpio, self.GPIO)
+    def write(self, pin, value): # Set GPIO state HIGH/LOW
+        self.set_bit(pin, value, self.gpio, self.GPIO)
 
-    def read(self, pin):
-        return read_bit(pin, self.gpio, self.GPIO)
+    def read(self, pin): # Get GPIO state
+        return self.get_bit(pin, self.gpio, self.GPIO)
 
-    def
+    def interrupt(self, pin, trigger = None): # Set Interrupt
+        if trigger in [RISING,FALLING,CHANGE]:
+            self.set_bit(pin, (trigger != CHANGE), self.intcon, self.INTCON)
+            self.set_bit(pin, trigger, self.defval, self.DEFVAL)
+            self.set_bit(pin, 1, self.gpinten, self.GPINTEN)
+        else:
+            self.set_bit(pin, 0, self.gpinten, self.GPINTEN)
+
+    def int_flag(self, pin):
+        return self.get_bit(pin, self.intf, self.INTF)
+
+    def int_captured(self, pin):
+        if int_flag(pin):
+            return self.get_bit(pin, self.intcap, self.INTCAP)
+
 
 class MCP23017(MCP):
-    """MCP23017-based GPIO class with 16 GPIO pins."""
-    # Define number of pins and registor addresses.
     NUM_GPIO = 16
     IODIR    = 0x00
     IPOL     = 0x02
@@ -138,8 +136,6 @@ class MCP23017(MCP):
     OLAT     = 0x14
 
 class MCP23008(MCP):
-    """MCP23008-based GPIO class with 8 GPIO pins."""
-    # Define number of pins and registor addresses.
     NUM_GPIO = 8
     IODIR    = 0x00
     IPOL     = 0x01

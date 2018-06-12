@@ -7,21 +7,21 @@ class PinX():
     PULL_UP = True
     IRQ_RISING = mcp.RISING
     IRQ_FALLING = mcp.FALLING
-    IRQ_CHANGE = mcp.BOTH
+    IRQ_CHANGE = mcp.CHANGE
 
     def __init__(self, id, mode = None, pull = None, value = None):
         self.id = id
         io._init(self.id)
-        init(mode, pull, value)
+        self.init(mode, pull, value)
 
-    def init(mode = None, pull = None, value = None):
+    def init(self,_mode = None, _pull = None, _value = None):
         if mode is not None:
-            self.mode(mode)
-            if mode == PinX.OUT:
-                if value is not None:
-                    self.value(value)
-            if pull is not None:
-                self.pull(pull)
+            self.mode(_mode)
+            if _mode == PinX.OUT:
+                if _value is not None:
+                    self.value(_value)
+            if _pull is not None:
+                self.pull(_pull)
 
     def value(self, X = None):
         if X is not None:
