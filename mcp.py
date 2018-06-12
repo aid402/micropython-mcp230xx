@@ -1,5 +1,6 @@
 # Credit https://github.com/ShrimpingIt/micropython-mcp230xx
 #        https://github.com/adafruit/Adafruit_Python_GPIO/blob/master/Adafruit_GPIO/MCP230xx.py
+#        https://github.com/adafruit/Adafruit-MCP23017-Arduino-Library
 # Author: Suttipong Wongkheaw, Thailand
 
 from machine import Pin, I2C
