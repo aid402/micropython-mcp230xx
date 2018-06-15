@@ -1,6 +1,12 @@
 '''mcp --> machine.Pin format'''
+from machine import Pin,I2C
+from micropython import schedule
 import mcp
-io = mcp.MCP23017()
+
+i2c = I2C(scl=Pin(5), sda=Pin(4))
+io = mcp.MCP23017(i2c)
+pinIrq = 15         # connect INTA or INTB
+
 class PinX():
     OUT = mcp.OUT
     IN = mcp.IN
@@ -13,6 +19,7 @@ class PinX():
         self.id = id
         io._init(self.id)
         self.init(mode, pull, value)
+        self.handler = None
 
     def init(self,_mode = None, _pull = None, _value = None):
         if mode is not None:
@@ -35,11 +42,21 @@ class PinX():
     def off(self):
         io.write(self.id, 0)
 
-    def mode(self, m = None):
-        io.iomode(self.id, m)
+    def mode(self, direction = None):
+        io.iomode(self.id, direction)
 
-    def pull(self, p):
-        io.pullup(self.id, p)
+    def pull(self, enabled):
+        io.pullup(self.id, enabled)
 
-    def irq(handler=None, trigger=PinX.IRQ_RISING):
-        pass
+    def irq(self, handler=None, trigger):
+        if trigger:
+            Irq = Pin(pinIRQ, Pin.IN)
+            Irq.irq(self.interrupted, trigger)
+            if handler is not None:
+                self.handler = handler
+        io.interrupt(self.id, trigger)
+
+    def interrupted(self):
+        if io.int_flag(self.id):
+            if self.handler is not None:
+                self.handler()

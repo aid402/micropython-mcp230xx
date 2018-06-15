@@ -9,19 +9,19 @@ from time import sleep
 OUT     = 0
 IN      = 1
 
-RISING  = 0
-FALLING = 1
-CHANGE  = 2
+RISING  = 1
+FALLING = 2
+CHANGE  = 3
 
 class MCP():
 
-    def __init__(self, address=0x20, gpioScl=5, gpioSda=4, pinReset=0):
+    def __init__(self, i2c, address=0x20, pinReset=None):
+        self.i2c = i2c
         self.address = address
-        self.pinReset = Pin(pinReset, Pin.OUT, Pin.PULL_UP, value = 1)
-        self.i2c = I2C(scl=Pin(gpioScl),sda=Pin(gpioSda),)
+        if pinReset is not None:
+            self.pinReset = Pin(pinReset, Pin.OUT, Pin.PULL_UP, value = 1)
 
         self.gpio_bytes = self.NUM_GPIO//8
-
         self.iodir = bytearray(self.gpio_bytes)
         self.gppu = bytearray(self.gpio_bytes)
         self.gpio = bytearray(self.gpio_bytes)
@@ -97,7 +97,7 @@ class MCP():
         else:
             return self.get_bit(pin, self.iodir, self.IODIR)
 
-    def pullup(self, pin, enabled): # Set GPIO pull_up resistor
+    def pullup(self, pin, enabled=True): # Set GPIO pull_up resistor
         self.set_bit(pin, enabled, self.gppu, self.GPPU)
 
     def write(self, pin, value): # Set GPIO state HIGH/LOW
@@ -106,10 +106,10 @@ class MCP():
     def read(self, pin): # Get GPIO state
         return self.get_bit(pin, self.gpio, self.GPIO)
 
-    def interrupt(self, pin, trigger = None): # Set Interrupt
-        if trigger in [RISING,FALLING,CHANGE]:
+    def interrupt(self, pin, trigger): # Set Interrupt
+        if trigger:
             self.set_bit(pin, (trigger != CHANGE), self.intcon, self.INTCON)
-            self.set_bit(pin, trigger, self.defval, self.DEFVAL)
+            self.set_bit(pin, (trigger == FALLING), self.defval, self.DEFVAL)
             self.set_bit(pin, 1, self.gpinten, self.GPINTEN)
         else:
             self.set_bit(pin, 0, self.gpinten, self.GPINTEN)
@@ -120,7 +120,6 @@ class MCP():
     def int_captured(self, pin):
         if int_flag(pin):
             return self.get_bit(pin, self.intcap, self.INTCAP)
-
 
 class MCP23017(MCP):
     NUM_GPIO = 16
