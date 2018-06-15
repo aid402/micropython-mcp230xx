@@ -18,6 +18,7 @@ class MCP():
     def __init__(self, i2c, address=0x20, pinReset=None):
         self.i2c = i2c
         self.address = address
+        self.pinReset = pinReset
         if pinReset is not None:
             self.pinReset = Pin(pinReset, Pin.OUT, Pin.PULL_UP, value = 1)
 
@@ -71,21 +72,25 @@ class MCP():
         self._validate_pin(pin)
 
     def reset(): # Reset mcp
-        self.pinReset.value(0)
-        sleep(0.5)
-        self.pinReset.value(1)
+        if self.pinReset is not None:
+            self.pinReset.value(0)
+            sleep(0.5)
+            self.pinReset.value(1)
 
-        self.iodir[] = 1
-        self.gppu[] = 0
-        self.gpio[] = 0
-        self.ipol[] = 0
-        self.gpinten[] = 0
-        self.defval[] = 0
-        self.intcon[] = 0
-        self.iocon[] = 0
-        self.intf[] = 0
-        self.intcap[] = 0
-        self.olat[] = 0
+            self.iodir = bytearray(self.gpio_bytes)
+            self.gppu = bytearray(self.gpio_bytes)
+            self.gpio = bytearray(self.gpio_bytes)
+            self.ipol = bytearray(self.gpio_bytes)
+            self.gpinten = bytearray(self.gpio_bytes)
+            self.defval = bytearray(self.gpio_bytes)
+            self.intcon = bytearray(self.gpio_bytes)
+            self.iocon = bytearray(self.gpio_bytes)
+            self.intf = bytearray(self.gpio_bytes)
+            self.intcap = bytearray(self.gpio_bytes)
+            self.olat = bytearray(self.gpio_bytes)
+            return True
+        else:
+            return False
 
     def iomode(self, pin, _mode): # Set GPIO direction IN/OUT
         if _mode is not None:
